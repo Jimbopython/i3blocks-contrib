@@ -28,6 +28,30 @@ typedef struct {
 #define BYTE_FOUR 0xF0  // 11110000
 #define BYTE_FIVE 0xF8  // 11111000
 
+unsigned long GetRamInKB(void)
+{
+    FILE *meminfo = fopen("/proc/meminfo", "r");
+    if(meminfo == NULL)
+    {
+	// todo
+    }
+
+    char line[256];
+    while(fgets(line, sizeof(line), meminfo))
+    {
+        int ram;
+        if(sscanf(line, "MemAvailable: %d kB", &ram) == 1)
+        {
+            fclose(meminfo);
+            return ram;
+        }
+    }
+
+    // If we got here, then we couldn't find the proper line in the meminfo file:
+    // do something appropriate like return an error code, throw an exception, etc.
+    fclose(meminfo);
+    return -1;
+}
 
 uint utf8_char_count(const char* str)
 {
@@ -120,9 +144,9 @@ int main(int argc, char *argv[])
     sysinfo_t info;
     sysinfo(&info);
 
-    long total = info.totalram;
-    long free  = info.freeram;
-    long usage = total - free;
+    unsigned long total = info.totalram;
+    unsigned long free = GetRamInKB() * 1000;
+    unsigned long usage = total - free;
     
     float percent = 100 * ((float)usage / total);
     float bar_percent = percent;
@@ -152,10 +176,10 @@ int main(int argc, char *argv[])
       printf("<span>");
     }
 
-    const float byte_to_gb = 1024 * 1024 * 1024;
+    const double byte_to_gb = 1024 * 1024 * 1024;
     
-    float usage_gb = usage / byte_to_gb;
-    float total_gb = total / byte_to_gb;
+    double usage_gb = usage / byte_to_gb;
+    double total_gb = total / byte_to_gb;
     
     printf("%s %4.1fG/%4.1fG (%i%%)</span>\n", buffer, usage_gb, total_gb, (int)percent);
     fflush(stdout);
